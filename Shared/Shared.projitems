@@ -15,6 +15,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\DistanceMatrix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)algorithms\PermutationValidator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)algorithms\PmxCrossover.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)algorithms\PmxPhase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\TourEvaluator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\TourGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)models\City.cs" />

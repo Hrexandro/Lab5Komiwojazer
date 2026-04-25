@@ -1,9 +1,9 @@
 using System.Globalization;
 using Tsp.Shared.Models;
 
-namespace Tsp.Shared.Parsing;
+namespace Shared.Parsing;
 
-public static class TspParser
+public static class Parser
 {
     public static List<City> LoadCities(string path)
     {

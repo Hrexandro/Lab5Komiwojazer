@@ -1,51 +1,44 @@
-﻿using Tsp.Shared.Algorithms;
-using Tsp.Shared.Parsing;
+﻿using System.Net.ServerSentEvents;
+using Tsp.Shared.Algorithms;
+using Shared.Parsing;
 
 string path = "wi29.tsp";
+const int pmxAttempts = 10_000;
 
 try
 {
-    var cities = TspParser.LoadCities(path);
+    var cities = Parser.LoadCities(path);
 
     Console.WriteLine($"Wczytano miast: {cities.Count}");
 
     var distances = DistanceMatrix.Build(cities);
-
     var random = new Random();
 
-    var randomTour = TourGenerator.CreateRandomTour(cities.Count, random);
-    double randomTourLength = TourEvaluator.CalculateLength(randomTour, distances);
+    var parent1 = TourGenerator.CreateRandomTour(cities.Count, random);
+    var parent2 = TourGenerator.CreateRandomTour(cities.Count, random);
 
-    Console.WriteLine($"Losowa trasa: {randomTourLength:F2}");
-    Console.WriteLine("Kolejność miast:");
-    Console.WriteLine(string.Join(" -> ", randomTour.Select(index => cities[index].Id)));
+    double parent1Length = TourEvaluator.CalculateLength(parent1, distances);
+    double parent2Length = TourEvaluator.CalculateLength(parent2, distances);
 
     Console.WriteLine();
+    Console.WriteLine("Rodzic 1:");
+    Console.WriteLine(string.Join(" -> ", parent1.Select(index => cities[index].Id)));
+    Console.WriteLine($"Długość: {parent1Length:F2}");
 
-    const int randomAttempts = 10_000;
+    Console.WriteLine();
+    Console.WriteLine("Rodzic 2:");
+    Console.WriteLine(string.Join(" -> ", parent2.Select(index => cities[index].Id)));
+    Console.WriteLine($"Długość: {parent2Length:F2}");
 
-    double bestLength = double.MaxValue;
-    int[]? bestTour = null;
+    var bestChild = PmxPhase.Run(parent1, parent2, distances, pmxAttempts, random);
 
-    for (int i = 0; i < randomAttempts; i++)
-    {
-        var tour = TourGenerator.CreateRandomTour(cities.Count, random);
-        double length = TourEvaluator.CalculateLength(tour, distances);
+    Console.WriteLine();
+    Console.WriteLine($"Najlepszy potomek po {pmxAttempts} próbach PMX:");
+    Console.WriteLine(string.Join(" -> ", bestChild.Order.Select(index => cities[index].Id)));
+    Console.WriteLine($"Długość: {bestChild.Length:F2}");
 
-        if (length < bestLength)
-        {
-            bestLength = length;
-            bestTour = tour;
-        }
-    }
-
-    Console.WriteLine($"Najlepsza z {randomAttempts} losowych tras: {bestLength:F2}");
-
-    if (bestTour is not null)
-    {
-        Console.WriteLine("Najlepsza kolejność miast:");
-        Console.WriteLine(string.Join(" -> ", bestTour.Select(index => cities[index].Id)));
-    }
+    Console.WriteLine();
+    Console.WriteLine("Faza PMX działa.");
 }
 catch (Exception ex)
 {
