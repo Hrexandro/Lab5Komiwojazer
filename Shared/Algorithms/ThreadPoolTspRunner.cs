@@ -10,7 +10,7 @@ public static class ThreadPoolTspRunner
         int cityCount,
         int workerCount,
         int epochCount,
-        int pmxAttempts,
+        TimeSpan pmxTime,
         TimeSpan threeOptTime,
         Action<BestFoundInfo>? onBestFound = null,
         Action<ProgressInfo>? onProgress = null,
@@ -23,8 +23,8 @@ public static class ThreadPoolTspRunner
         if (epochCount <= 0)
             throw new ArgumentException("Liczba epok musi być większa od zera.");
 
-        if (pmxAttempts <= 0)
-            throw new ArgumentException("Liczba prób PMX musi być większa od zera.");
+        if (pmxTime <= TimeSpan.Zero)
+            throw new ArgumentException("Czas PMX musi być większy od zera.");
 
         var completionSource = new TaskCompletionSource<ParallelRunResult>();
 
@@ -133,7 +133,7 @@ public static class ThreadPoolTspRunner
                             parent1Inputs[capturedWorkerId],
                             parent2Inputs[capturedWorkerId],
                             distances,
-                            pmxAttempts,
+                            pmxTime,
                             random,
                             token,
                             pauseController);

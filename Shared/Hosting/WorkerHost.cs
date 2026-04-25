@@ -31,7 +31,7 @@ public static class WorkerHost
                 cities.Count,
                 settings.WorkerCount,
                 settings.EpochCount,
-                settings.PmxAttempts,
+                settings.PmxTime.TotalSeconds,
                 settings.ThreeOptTime.TotalSeconds,
                 synchronizationMode));
 
@@ -78,15 +78,12 @@ public static class WorkerHost
             };
             Action<ProgressInfo> progressHandler = info =>
             {
-                if (info.ProcessedCount == 1 || info.ProcessedCount % 100 == 0)
-                {
-                    JsonLineWriter.Write(new ProgressMessage(
-                        "progress",
-                        info.WorkerId,
-                        info.Epoch,
-                        info.Phase,
-                        info.ProcessedCount));
-                }
+                JsonLineWriter.Write(new ProgressMessage(
+                    "progress",
+                    info.WorkerId,
+                    info.Epoch,
+                    info.Phase,
+                    info.ProcessedCount));
             };
             ParallelRunResult result;
 
@@ -97,7 +94,7 @@ public static class WorkerHost
                     cities.Count,
                     settings.WorkerCount,
                     settings.EpochCount,
-                    settings.PmxAttempts,
+                    settings.PmxTime,
                     settings.ThreeOptTime,
                     bestHandler,
                     progressHandler,
@@ -111,7 +108,7 @@ public static class WorkerHost
                     cities.Count,
                     settings.WorkerCount,
                     settings.EpochCount,
-                    settings.PmxAttempts,
+                    settings.PmxTime,
                     settings.ThreeOptTime,
                     bestHandler,
                     progressHandler,

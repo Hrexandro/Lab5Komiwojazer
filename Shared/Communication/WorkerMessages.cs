@@ -5,7 +5,7 @@ public sealed record StartedMessage(
     int CityCount,
     int WorkerCount,
     int EpochCount,
-    int PmxAttempts,
+    double PmxSeconds,
     double ThreeOptSeconds,
     string SynchronizationMode);
 

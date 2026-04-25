@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace Lab5KomiwojazerGui;
 
@@ -18,6 +19,9 @@ public partial class MainWindow : Window
     private List<City>? _cities;
     private int[]? _bestTour;
     private long _expectedProcessedCount;
+    private readonly Stopwatch _runStopwatch = new();
+    private readonly DispatcherTimer _uiTimer = new();
+    private long _lastProcessedCount;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -26,6 +30,12 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _uiTimer.Interval = TimeSpan.FromMilliseconds(500);
+        _uiTimer.Tick += (_, _) =>
+        {
+            if (_runStopwatch.IsRunning)
+                UpdatePerformance(_lastProcessedCount);
+        };
     }
 
     private async void StartButton_Click(object sender, RoutedEventArgs e)
@@ -45,6 +55,11 @@ public partial class MainWindow : Window
             BestWorkerTextBlock.Text = "-";
             PhaseWorkerTextBlock.Text = "-";
             _expectedProcessedCount = 0;
+            ElapsedTimeTextBlock.Text = "-";
+            InstancesPerSecondTextBlock.Text = "-";
+            _runStopwatch.Restart();
+            _lastProcessedCount = 0;
+            _uiTimer.Start();
 
             string mode = GetSelectedMode();
             string workerPath = ResolveWorkerPath(mode);
@@ -79,7 +94,7 @@ public partial class MainWindow : Window
             startInfo.ArgumentList.Add(tspPath);
             startInfo.ArgumentList.Add(WorkerCountTextBox.Text.Trim());
             startInfo.ArgumentList.Add(EpochCountTextBox.Text.Trim());
-            startInfo.ArgumentList.Add(PmxAttemptsTextBox.Text.Trim());
+            startInfo.ArgumentList.Add(PmxTimeTextBox.Text.Trim());
             startInfo.ArgumentList.Add(ThreeOptTimeTextBox.Text.Trim());
 
             _workerProcess = new Process
@@ -102,6 +117,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            _uiTimer.Stop();
+            _runStopwatch.Stop();
             MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
             StatusTextBlock.Text = "Błąd";
         }
@@ -168,7 +185,9 @@ public partial class MainWindow : Window
 
                 if (message is not null)
                 {
+                    _lastProcessedCount = message.ProcessedCount;
                     ProcessedTextBlock.Text = message.ProcessedCount.ToString();
+                    UpdatePerformance(message.ProcessedCount);
                     EpochTextBlock.Text = message.Epoch.ToString();
                     PhaseWorkerTextBlock.Text = $"{message.Phase}, zadanie {message.WorkerId}";
                     StatusTextBlock.Text = $"Epoka {message.Epoch}, faza {message.Phase}, zadanie {message.WorkerId}";
@@ -177,7 +196,7 @@ public partial class MainWindow : Window
                     {
                         MainProgressBar.Value = Math.Min(message.ProcessedCount, _expectedProcessedCount);
                         double percent = message.ProcessedCount * 100.0 / _expectedProcessedCount;
-                        ProgressPercentTextBlock.Text = $"{percent:F1}%";
+                        ProgressPercentTextBlock.Text = $"{percent:F2}%";
                     }
                 }
             }
@@ -188,7 +207,9 @@ public partial class MainWindow : Window
                 if (message is not null)
                 {
                     BestLengthTextBlock.Text = message.Length.ToString("F2");
+                    _lastProcessedCount = message.ProcessedCount;
                     ProcessedTextBlock.Text = message.ProcessedCount.ToString();
+                    UpdatePerformance(message.ProcessedCount);
                     StatusTextBlock.Text = $"Epoka {message.Epoch}, faza {message.Phase}, zadanie {message.WorkerId}";
                     EpochTextBlock.Text = message.Epoch.ToString();
                     PhaseWorkerTextBlock.Text = $"{message.Phase}, zadanie {message.WorkerId}";
@@ -203,7 +224,24 @@ public partial class MainWindow : Window
                 var message = JsonSerializer.Deserialize<ControlMessage>(line, JsonOptions);
 
                 if (message is not null)
+                {
                     StatusTextBlock.Text = $"Komenda: {message.Command}";
+
+                    if (message.Command == "pause")
+                    {
+                        _runStopwatch.Stop();
+                        UpdatePerformance(_lastProcessedCount);
+                    }
+                    else if (message.Command == "resume")
+                    {
+                        _runStopwatch.Start();
+                    }
+                    else if (message.Command == "stop")
+                    {
+                        _runStopwatch.Stop();
+                        UpdatePerformance(_lastProcessedCount);
+                    }
+                }
             }
             else if (type == "finished")
             {
@@ -211,8 +249,11 @@ public partial class MainWindow : Window
 
                 if (message is not null)
                 {
-                    BestLengthTextBlock.Text = message.BestLength.ToString("F2");
+                    _lastProcessedCount = message.ProcessedCount;
                     ProcessedTextBlock.Text = message.ProcessedCount.ToString();
+                    _runStopwatch.Stop();
+                    _uiTimer.Stop();
+                    UpdatePerformance(message.ProcessedCount);
                     StatusTextBlock.Text = message.WasCancelled ? "Przerwano" : "Zakończono";
 
                     if (!message.WasCancelled && _expectedProcessedCount > 0)
@@ -225,7 +266,7 @@ public partial class MainWindow : Window
                         MainProgressBar.Value = Math.Min(message.ProcessedCount, _expectedProcessedCount);
 
                         double percent = message.ProcessedCount * 100.0 / _expectedProcessedCount;
-                        ProgressPercentTextBlock.Text = $"{percent:F1}%";
+                        ProgressPercentTextBlock.Text = $"{percent:F2}%";
                     }
 
                     _bestTour = message.BestTour;
@@ -364,11 +405,14 @@ public partial class MainWindow : Window
     private void PauseButton_Click(object sender, RoutedEventArgs e)
     {
         SendCommand("pause");
+        _runStopwatch.Stop();
+        UpdatePerformance(_lastProcessedCount);
     }
 
     private void ResumeButton_Click(object sender, RoutedEventArgs e)
     {
         SendCommand("resume");
+        _runStopwatch.Start();
     }
 
     private void StopButton_Click(object sender, RoutedEventArgs e)
@@ -392,6 +436,7 @@ public partial class MainWindow : Window
         ResumeButton.IsEnabled = isRunning;
         StopButton.IsEnabled = isRunning;
         ModeComboBox.IsEnabled = !isRunning;
+        ExitButton.IsEnabled = !isRunning;
     }
 
     private string GetSelectedMode()
@@ -441,7 +486,26 @@ public partial class MainWindow : Window
     int CityId,
     double X,
     double Y);
+    private void ExitButton_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+    private void UpdatePerformance(long processedCount)
+    {
+        double seconds = _runStopwatch.Elapsed.TotalSeconds;
 
+        ElapsedTimeTextBlock.Text = $"{seconds:F1} s";
+
+        if (seconds > 0)
+        {
+            double instancesPerSecond = processedCount / seconds;
+            InstancesPerSecondTextBlock.Text = $"{instancesPerSecond:F1}";
+        }
+        else
+        {
+            InstancesPerSecondTextBlock.Text = "-";
+        }
+    }
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         try

@@ -1,4 +1,5 @@
 using Shared.Models;
+using System.Diagnostics;
 using System.Threading;
 
 namespace Shared.Algorithms;
@@ -9,19 +10,20 @@ public static class PmxPhase
         int[] parent1,
         int[] parent2,
         double[,] distances,
-        int attempts,
+        TimeSpan maxTime,
         Random random,
         CancellationToken token = default,
         PauseController? pauseController = null)
     {
-        if (attempts <= 0)
-            throw new ArgumentException("Liczba prób musi być większa od zera.");
+        if (maxTime <= TimeSpan.Zero)
+            throw new ArgumentException("Czas PMX musi być większy od zera.");
 
         int cityCount = parent1.Length;
 
         Tour? bestTour = null;
+        var stopwatch = Stopwatch.StartNew();
 
-        for (int i = 0; i < attempts; i++)
+        do
         {
             token.ThrowIfCancellationRequested();
             pauseController?.WaitIfPaused(token);
@@ -44,6 +46,7 @@ public static class PmxPhase
             if (bestTour is null || betterChild.Length < bestTour.Length)
                 bestTour = betterChild;
         }
+        while (stopwatch.Elapsed < maxTime);
 
         return bestTour!;
     }

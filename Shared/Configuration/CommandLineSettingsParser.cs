@@ -12,19 +12,19 @@ public static class CommandLineSettingsParser
                 "wi29.tsp",
                 4,
                 100_000,
-                10_000,
+                TimeSpan.FromSeconds(2),
                 TimeSpan.FromSeconds(2),
                 "tpl");
         }
 
         if (args.Length is not 5 and not 6)
-            throw new ArgumentException("Oczekiwane argumenty: plik.tsp liczbaZadan liczbaEpok probyPMX czas3OptWSekundach [tryb]");
+            throw new ArgumentException("Oczekiwane argumenty: plik.tsp liczbaZadan liczbaEpok czasPMXWSekundach czas3OptWSekundach [tryb]");
 
         string path = args[0];
 
         int workerCount = int.Parse(args[1], CultureInfo.InvariantCulture);
         int epochCount = int.Parse(args[2], CultureInfo.InvariantCulture);
-        int pmxAttempts = int.Parse(args[3], CultureInfo.InvariantCulture);
+        double pmxSeconds = double.Parse(args[3], CultureInfo.InvariantCulture);
         double threeOptSeconds = double.Parse(args[4], CultureInfo.InvariantCulture);
 
         string mode = args.Length == 6
@@ -37,8 +37,8 @@ public static class CommandLineSettingsParser
         if (epochCount <= 0)
             throw new ArgumentException("Liczba epok musi być większa od zera.");
 
-        if (pmxAttempts <= 0)
-            throw new ArgumentException("Liczba prób PMX musi być większa od zera.");
+        if (pmxSeconds <= 0)
+            throw new ArgumentException("Czas PMX musi być większy od zera.");
 
         if (threeOptSeconds <= 0)
             throw new ArgumentException("Czas 3-opt musi być większy od zera.");
@@ -53,7 +53,7 @@ public static class CommandLineSettingsParser
             path,
             workerCount,
             epochCount,
-            pmxAttempts,
+            TimeSpan.FromSeconds(pmxSeconds),
             TimeSpan.FromSeconds(threeOptSeconds),
             mode);
     }

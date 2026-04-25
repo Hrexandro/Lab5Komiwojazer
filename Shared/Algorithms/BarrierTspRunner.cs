@@ -10,7 +10,7 @@ public static class BarrierTspRunner
         int cityCount,
         int workerCount,
         int epochCount,
-        int pmxAttempts,
+        TimeSpan pmxTime,
         TimeSpan threeOptTime,
         Action<BestFoundInfo>? onBestFound = null,
         Action<ProgressInfo>? onProgress = null,
@@ -23,8 +23,8 @@ public static class BarrierTspRunner
         if (epochCount <= 0)
             throw new ArgumentException("Liczba epok musi być większa od zera.");
 
-        if (pmxAttempts <= 0)
-            throw new ArgumentException("Liczba prób PMX musi być większa od zera.");
+        if (pmxTime <= TimeSpan.Zero)
+            throw new ArgumentException("Czas PMX musi być większy od zera.");
 
         var bestStore = new BestResultStore();
         long processedCount = 0;
@@ -131,7 +131,7 @@ public static class BarrierTspRunner
                             parent1Inputs[capturedWorkerId],
                             parent2Inputs[capturedWorkerId],
                             distances,
-                            pmxAttempts,
+                            pmxTime,
                             random,
                             token,
                             pauseController);
