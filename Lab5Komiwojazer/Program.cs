@@ -1,30 +1,25 @@
 ﻿using Shared.Algorithms;
 using Shared.Communication;
+using Shared.Configuration;
 using Shared.Parsing;
-
-string path = "wi29.tsp";
-
-const int workerCount = 4;
-const int epochCount = 100_000;
-const int pmxAttempts = 10_000;
-
-TimeSpan threeOptTime = TimeSpan.FromSeconds(2);
 
 using var cts = new CancellationTokenSource();
 using var pauseController = new PauseController();
 
 try
 {
-    var cities = Parser.LoadCities(path);
+    var settings = CommandLineSettingsParser.Parse(args);
+
+    var cities = Parser.LoadCities(settings.Path);
     var distances = DistanceMatrix.Build(cities);
 
     JsonLineWriter.Write(new StartedMessage(
         "started",
         cities.Count,
-        workerCount,
-        epochCount,
-        pmxAttempts,
-        threeOptTime.TotalSeconds,
+        settings.WorkerCount,
+        settings.EpochCount,
+        settings.PmxAttempts,
+        settings.ThreeOptTime.TotalSeconds,
         "Barrier"));
 
     var controlTask = Task.Run(() =>
@@ -60,10 +55,10 @@ try
     var result = await BarrierTspRunner.RunAsync(
         distances,
         cities.Count,
-        workerCount,
-        epochCount,
-        pmxAttempts,
-        threeOptTime,
+        settings.WorkerCount,
+        settings.EpochCount,
+        settings.PmxAttempts,
+        settings.ThreeOptTime,
         info =>
         {
             JsonLineWriter.Write(new BestMessage(
