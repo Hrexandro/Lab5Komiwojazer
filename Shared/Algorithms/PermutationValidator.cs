@@ -1,4 +1,4 @@
-namespace Tsp.Shared.Algorithms;
+namespace Shared.Algorithms;
 
 public static class PermutationValidator
 {

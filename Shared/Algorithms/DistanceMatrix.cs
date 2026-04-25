@@ -1,6 +1,7 @@
-using Tsp.Shared.Models;
+using Shared.Models;
 
-namespace Tsp.Shared.Algorithms;
+
+namespace Shared.Algorithms;
 
 public static class DistanceMatrix
 {

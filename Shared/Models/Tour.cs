@@ -1,4 +1,4 @@
-namespace Tsp.Shared.Models;
+namespace Shared.Models;
 
 public sealed class Tour
 {

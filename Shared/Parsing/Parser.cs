@@ -1,5 +1,5 @@
 using System.Globalization;
-using Tsp.Shared.Models;
+using Shared.Models;
 
 namespace Shared.Parsing;
 

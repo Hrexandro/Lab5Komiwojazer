@@ -14,7 +14,10 @@
     <Folder Include="$(MSBuildThisFileDirectory)Parsing\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)algorithms\BarrierTspRunner.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)algorithms\BestResultStore.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\DistanceMatrix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)algorithms\ParallelTspRunner.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\PermutationValidator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\PmxCrossover.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\PmxPhase.cs" />

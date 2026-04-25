@@ -1,6 +1,6 @@
-using Tsp.Shared.Models;
+namespace Shared.Algorithms;
 
-namespace Tsp.Shared.Algorithms;
+using Shared.Models;
 
 public static class PmxPhase
 {
