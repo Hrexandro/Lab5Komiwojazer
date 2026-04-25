@@ -139,7 +139,7 @@
     </Grid>
 </GroupBox>
 
-        <GroupBox Header="Komunikaty" Grid.Row="4" Margin="0,10,0,0">
+        <GroupBox Header="Log techniczny" Grid.Row="4" Margin="0,10,0,0">
             <ListBox x:Name="LogListBox"/>
         </GroupBox>
     </Grid>
