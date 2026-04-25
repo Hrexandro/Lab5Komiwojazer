@@ -1,4 +1,5 @@
 ﻿using Shared.Algorithms;
+using Shared.Communication;
 using Shared.Parsing;
 
 string path = "wi29.tsp";
@@ -15,41 +16,41 @@ using var pauseController = new PauseController();
 try
 {
     var cities = Parser.LoadCities(path);
-
-    Console.WriteLine($"Wczytano miast: {cities.Count}");
-    Console.WriteLine($"Liczba zadań: {workerCount}");
-    Console.WriteLine($"Liczba epok: {epochCount}");
-    Console.WriteLine($"Próby PMX na epokę: {pmxAttempts}");
-    Console.WriteLine($"Czas 3-opt na epokę: {threeOptTime.TotalSeconds:F0} s");
-    Console.WriteLine("Tryb synchronizacji: Barrier");
-    Console.WriteLine();
-    Console.WriteLine("Sterowanie:");
-    Console.WriteLine("P - pauza");
-    Console.WriteLine("R - wznowienie");
-    Console.WriteLine("S - stop");
-    Console.WriteLine();
-
     var distances = DistanceMatrix.Build(cities);
+
+    JsonLineWriter.Write(new StartedMessage(
+        "started",
+        cities.Count,
+        workerCount,
+        epochCount,
+        pmxAttempts,
+        threeOptTime.TotalSeconds,
+        "Barrier"));
 
     var controlTask = Task.Run(() =>
     {
         while (!cts.IsCancellationRequested)
         {
-            var key = Console.ReadKey(true).Key;
+            string? line = Console.ReadLine();
 
-            if (key == ConsoleKey.P)
+            if (line is null)
+                break;
+
+            string command = line.Trim().ToLowerInvariant();
+
+            if (command == "p" || command == "pause")
             {
                 pauseController.Pause();
-                Console.WriteLine("Pauza.");
+                JsonLineWriter.Write(new ControlMessage("control", "pause"));
             }
-            else if (key == ConsoleKey.R)
+            else if (command == "r" || command == "resume")
             {
                 pauseController.Resume();
-                Console.WriteLine("Wznowienie.");
+                JsonLineWriter.Write(new ControlMessage("control", "resume"));
             }
-            else if (key == ConsoleKey.S)
+            else if (command == "s" || command == "stop")
             {
-                Console.WriteLine("Zatrzymywanie obliczeń...");
+                JsonLineWriter.Write(new ControlMessage("control", "stop"));
                 cts.Cancel();
                 break;
             }
@@ -65,26 +66,26 @@ try
         threeOptTime,
         info =>
         {
-            Console.WriteLine(
-                $"Nowy najlepszy wynik | zadanie {info.WorkerId} | epoka {info.Epoch} | faza {info.Phase} | długość {info.Length:F2} | policzone: {info.ProcessedCount}");
+            JsonLineWriter.Write(new BestMessage(
+                "best",
+                info.WorkerId,
+                info.Epoch,
+                info.Phase,
+                info.Length,
+                info.ProcessedCount,
+                info.Tour));
         },
         cts.Token,
         pauseController);
 
-    Console.WriteLine();
-
-    if (result.WasCancelled)
-        Console.WriteLine("Obliczenia zostały przerwane.");
-    else
-        Console.WriteLine("Obliczenia zakończone normalnie.");
-
-    Console.WriteLine($"Policzone instancje: {result.ProcessedCount}");
-    Console.WriteLine($"Najlepszy wynik: {result.BestTour.Length:F2}");
-    Console.WriteLine("Najlepsza trasa:");
-    Console.WriteLine(string.Join(" -> ", result.BestTour.Order.Select(index => cities[index].Id)));
+    JsonLineWriter.Write(new FinishedMessage(
+        "finished",
+        result.WasCancelled,
+        result.ProcessedCount,
+        result.BestTour.Length,
+        (int[])result.BestTour.Order.Clone()));
 }
 catch (Exception ex)
 {
-    Console.WriteLine("Błąd:");
-    Console.WriteLine(ex.Message);
+    JsonLineWriter.Write(new ErrorMessage("error", ex.Message));
 }

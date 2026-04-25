@@ -11,6 +11,7 @@
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Models\" />
     <Folder Include="$(MSBuildThisFileDirectory)Algorithms\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Communication\" />
     <Folder Include="$(MSBuildThisFileDirectory)Parsing\" />
   </ItemGroup>
   <ItemGroup>
@@ -25,6 +26,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\ThreeOpt.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\TourEvaluator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)algorithms\TourGenerator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)communication\JsonLineWriter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)communication\WorkerMessages.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)models\City.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)models\Tour.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)parsing\Parser.cs" />

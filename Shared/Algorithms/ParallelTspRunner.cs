@@ -56,7 +56,8 @@ public static class ParallelTspRunner
                             epoch,
                             "PMX",
                             bestChild.Length,
-                            afterPmxCount));
+                            afterPmxCount,
+                            (int[])bestChild.Order.Clone()));
                     }
 
                     token.ThrowIfCancellationRequested();
@@ -72,7 +73,8 @@ public static class ParallelTspRunner
                             epoch,
                             "3-opt",
                             improved.Length,
-                            afterThreeOptCount));
+                            afterThreeOptCount,
+                            (int[])improved.Order.Clone()));
                     }
                 }
             }, token);
@@ -96,4 +98,5 @@ public sealed record BestFoundInfo(
     int Epoch,
     string Phase,
     double Length,
-    long ProcessedCount);
+    long ProcessedCount,
+    int[] Tour);

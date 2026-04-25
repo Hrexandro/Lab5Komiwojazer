@@ -55,7 +55,8 @@ public static class BarrierTspRunner
                     epoch,
                     phase,
                     candidate.Length,
-                    count));
+                    count,
+                    (int[])candidate.Order.Clone()));
             }
         }
 
