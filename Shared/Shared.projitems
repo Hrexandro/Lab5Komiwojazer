@@ -13,6 +13,7 @@
     <Folder Include="$(MSBuildThisFileDirectory)Algorithms\" />
     <Folder Include="$(MSBuildThisFileDirectory)Communication\" />
     <Folder Include="$(MSBuildThisFileDirectory)Configuration\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Hosting\" />
     <Folder Include="$(MSBuildThisFileDirectory)Parsing\" />
   </ItemGroup>
   <ItemGroup>
@@ -32,6 +33,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)communication\WorkerMessages.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)configuration\CommandLineSettingsParser.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)configuration\WorkerSettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)hosting\WorkerHost.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)models\City.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)models\Tour.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)parsing\Parser.cs" />
