@@ -15,12 +15,31 @@ public static class PmxPhase
         CancellationToken token = default,
         PauseController? pauseController = null)
     {
+        var pair = RunPair(parent1, parent2, distances, maxTime, random, token, pauseController);
+
+        return pair.First.Length <= pair.Second.Length
+            ? pair.First
+            : pair.Second;
+    }
+
+    public static (Tour First, Tour Second) RunPair(
+        int[] parent1,
+        int[] parent2,
+        double[,] distances,
+        TimeSpan maxTime,
+        Random random,
+        CancellationToken token = default,
+        PauseController? pauseController = null)
+    {
         if (maxTime <= TimeSpan.Zero)
             throw new ArgumentException("Czas PMX musi być większy od zera.");
 
         int cityCount = parent1.Length;
 
-        Tour? bestTour = null;
+        Tour? bestFirst = null;
+        Tour? bestSecond = null;
+        double bestPairScore = double.PositiveInfinity;
+
         var stopwatch = Stopwatch.StartNew();
 
         do
@@ -39,15 +58,20 @@ public static class PmxPhase
             double child1Length = TourEvaluator.CalculateLength(child1, distances);
             double child2Length = TourEvaluator.CalculateLength(child2, distances);
 
-            var betterChild = child1Length <= child2Length
-                ? new Tour(child1) { Length = child1Length }
-                : new Tour(child2) { Length = child2Length };
+            var first = new Tour(child1) { Length = child1Length };
+            var second = new Tour(child2) { Length = child2Length };
 
-            if (bestTour is null || betterChild.Length < bestTour.Length)
-                bestTour = betterChild;
+            double pairScore = child1Length + child2Length;
+
+            if (pairScore < bestPairScore)
+            {
+                bestPairScore = pairScore;
+                bestFirst = first;
+                bestSecond = second;
+            }
         }
         while (stopwatch.Elapsed < maxTime);
 
-        return bestTour!;
+        return (bestFirst!, bestSecond!);
     }
 }

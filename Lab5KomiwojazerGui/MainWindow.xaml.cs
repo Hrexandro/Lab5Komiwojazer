@@ -2,14 +2,15 @@
 using Shared.Models;
 using Shared.Parsing;
 using System.Diagnostics;
-using IOFile = System.IO.File;
-using IOPath = System.IO.Path;
+using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using IOFile = System.IO.File;
+using IOPath = System.IO.Path;
 
 namespace Lab5KomiwojazerGui;
 
@@ -456,17 +457,59 @@ public partial class MainWindow : Window
 
         string exeName = $"{projectName}.exe";
 
-        return IOPath.GetFullPath(IOPath.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            projectName,
-            "bin",
-            "Debug",
-            "net10.0",
-            exeName));
+        var baseDirectory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        string currentTargetFramework = baseDirectory.Name;
+        string workerTargetFramework = currentTargetFramework.Replace("-windows", "");
+
+        string configuration =
+            baseDirectory.Parent?.Name
+            ?? "Debug";
+
+        string? solutionDirectory =
+            baseDirectory.Parent?.Parent?.Parent?.Parent?.FullName;
+
+        var candidates = new List<string>
+    {
+        IOPath.Combine(AppContext.BaseDirectory, exeName)
+    };
+
+        if (solutionDirectory is not null)
+        {
+            candidates.Add(IOPath.Combine(
+                solutionDirectory,
+                projectName,
+                "bin",
+                configuration,
+                workerTargetFramework,
+                exeName));
+
+            candidates.Add(IOPath.Combine(
+                solutionDirectory,
+                projectName,
+                "bin",
+                "Debug",
+                workerTargetFramework,
+                exeName));
+
+            candidates.Add(IOPath.Combine(
+                solutionDirectory,
+                projectName,
+                "bin",
+                "Release",
+                workerTargetFramework,
+                exeName));
+        }
+
+        foreach (string candidate in candidates.Select(IOPath.GetFullPath))
+        {
+            if (IOFile.Exists(candidate))
+                return candidate;
+        }
+
+        throw new FileNotFoundException(
+            "Nie znaleziono programu obliczeniowego. Sprawdzone ścieżki:\n" +
+            string.Join("\n", candidates.Select(IOPath.GetFullPath)));
     }
 
     private static string ResolveTspPath(string workerDirectory, string path)
@@ -508,19 +551,15 @@ public partial class MainWindow : Window
     }
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        try
+        if (_workerProcess is not null && !_workerProcess.HasExited)
         {
-            if (_workerProcess is not null && !_workerProcess.HasExited)
-            {
-                _workerProcess.StandardInput.WriteLine("stop");
-                _workerProcess.StandardInput.Flush();
+            e.Cancel = true;
 
-                if (!_workerProcess.WaitForExit(2000))
-                    _workerProcess.Kill(true);
-            }
-        }
-        catch
-        {
+            MessageBox.Show(
+                "Obliczenia są w toku. Najpierw zakończ je przyciskiem Stop.",
+                "Nie można zamknąć aplikacji",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
     }
 }

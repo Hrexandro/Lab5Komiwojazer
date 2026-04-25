@@ -63,49 +63,33 @@ public static class ThreeOpt
 
     private static List<int[]> GenerateCandidates(int[] order, int i, int j, int k)
     {
-        var candidates = new List<int[]>();
+        int[] a = order.Take(i + 1).ToArray();
+        int[] b = order.Skip(i + 1).Take(j - i).ToArray();
+        int[] c = order.Skip(j + 1).Take(k - j).ToArray();
+        int[] d = order.Skip(k + 1).ToArray();
 
-        candidates.Add(CloneAndReverse(order, i + 1, j));
-        candidates.Add(CloneAndReverse(order, j + 1, k));
-        candidates.Add(CloneAndReverse(order, i + 1, k));
+        return new List<int[]>
+    {
+        Join(a, ReverseCopy(b), c, d),
+        Join(a, b, ReverseCopy(c), d),
+        Join(a, ReverseCopy(b), ReverseCopy(c), d),
 
-        var candidate4 = (int[])order.Clone();
-        Reverse(candidate4, i + 1, j);
-        Reverse(candidate4, j + 1, k);
-        candidates.Add(candidate4);
-
-        var candidate5 = (int[])order.Clone();
-        Reverse(candidate5, i + 1, j);
-        Reverse(candidate5, i + 1, k);
-        candidates.Add(candidate5);
-
-        var candidate6 = (int[])order.Clone();
-        Reverse(candidate6, j + 1, k);
-        Reverse(candidate6, i + 1, k);
-        candidates.Add(candidate6);
-
-        var candidate7 = (int[])order.Clone();
-        Reverse(candidate7, i + 1, k);
-        Reverse(candidate7, i + 1, j);
-        candidates.Add(candidate7);
-
-        return candidates;
+        Join(a, ReverseCopy(c), ReverseCopy(b), d),
+        Join(a, c, b, d),
+        Join(a, c, ReverseCopy(b), d),
+        Join(a, ReverseCopy(c), b, d)
+    };
     }
 
-    private static int[] CloneAndReverse(int[] order, int start, int end)
+    private static int[] Join(params int[][] parts)
     {
-        var copy = (int[])order.Clone();
-        Reverse(copy, start, end);
+        return parts.SelectMany(part => part).ToArray();
+    }
+
+    private static int[] ReverseCopy(int[] values)
+    {
+        var copy = (int[])values.Clone();
+        Array.Reverse(copy);
         return copy;
-    }
-
-    private static void Reverse(int[] order, int start, int end)
-    {
-        while (start < end)
-        {
-            (order[start], order[end]) = (order[end], order[start]);
-            start++;
-            end--;
-        }
     }
 }
