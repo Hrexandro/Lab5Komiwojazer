@@ -20,7 +20,7 @@ try
         settings.EpochCount,
         settings.PmxAttempts,
         settings.ThreeOptTime.TotalSeconds,
-        "Barrier"));
+        "ThreadPool + Barrier"));
 
     var controlTask = Task.Run(() =>
     {
@@ -52,8 +52,8 @@ try
         }
     });
 
-    var result = await BarrierTspRunner.RunAsync(
-        distances,
+var result = await ThreadPoolTspRunner.RunAsync(
+            distances,
         cities.Count,
         settings.WorkerCount,
         settings.EpochCount,
