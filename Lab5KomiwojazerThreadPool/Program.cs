@@ -1,1 +1,3 @@
-﻿Console.WriteLine("Hello, World!");
+﻿using Shared.Hosting;
+
+await WorkerHost.RunAsync(args, "threadpool");

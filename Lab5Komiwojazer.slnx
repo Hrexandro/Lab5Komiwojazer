@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Lab5Komiwojazer/Lab5Komiwojazer.csproj" />
+  <Project Path="Lab5KomiwojazerGui/Lab5KomiwojazerGui.csproj" Id="64324ac9-6c2e-479e-a0a3-c8688851fac2" />
   <Project Path="Lab5KomiwojazerThreadPool/Lab5KomiwojazerThreadPool.csproj" Id="06359844-5d6e-495f-af78-ea814dd376ee" />
   <Project Path="Shared/Shared.shproj" />
 </Solution>

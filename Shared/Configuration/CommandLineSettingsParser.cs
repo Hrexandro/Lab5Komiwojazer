@@ -17,8 +17,8 @@ public static class CommandLineSettingsParser
                 "tpl");
         }
 
-        if (args.Length != 6)
-            throw new ArgumentException("Oczekiwane argumenty: plik.tsp liczbaZadan liczbaEpok probyPMX czas3OptWSekundach tryb");
+        if (args.Length is not 5 and not 6)
+            throw new ArgumentException("Oczekiwane argumenty: plik.tsp liczbaZadan liczbaEpok probyPMX czas3OptWSekundach [tryb]");
 
         string path = args[0];
 
@@ -26,7 +26,10 @@ public static class CommandLineSettingsParser
         int epochCount = int.Parse(args[2], CultureInfo.InvariantCulture);
         int pmxAttempts = int.Parse(args[3], CultureInfo.InvariantCulture);
         double threeOptSeconds = double.Parse(args[4], CultureInfo.InvariantCulture);
-        string mode = args[5].Trim().ToLowerInvariant();
+
+        string mode = args.Length == 6
+            ? args[5].Trim().ToLowerInvariant()
+            : "tpl";
 
         if (workerCount < 2)
             throw new ArgumentException("Liczba zadań musi wynosić co najmniej 2.");

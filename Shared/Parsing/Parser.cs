@@ -1,5 +1,6 @@
-using System.Globalization;
 using Shared.Models;
+using System.Globalization;
+using System.IO;
 
 namespace Shared.Parsing;
 
@@ -34,8 +35,7 @@ public static class Parser
 
             var parts = line.Split(
                 new[] { ' ', '\t' },
-                StringSplitOptions.RemoveEmptyEntries
-            );
+                StringSplitOptions.RemoveEmptyEntries);
 
             if (parts.Length < 3)
                 continue;
