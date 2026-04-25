@@ -17,7 +17,7 @@ public partial class MainWindow : Window
     private Process? _workerProcess;
     private List<City>? _cities;
     private int[]? _bestTour;
-
+    private long _expectedProcessedCount;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -34,10 +34,17 @@ public partial class MainWindow : Window
         {
             LogListBox.Items.Clear();
             TourCanvas.Children.Clear();
+            TourDataGrid.ItemsSource = null;
             StatusTextBlock.Text = "Uruchamianie...";
             BestLengthTextBlock.Text = "-";
             ProcessedTextBlock.Text = "-";
             _bestTour = null;
+            MainProgressBar.Value = 0;
+            ProgressPercentTextBlock.Text = "0%";
+            EpochTextBlock.Text = "-";
+            BestWorkerTextBlock.Text = "-";
+            PhaseWorkerTextBlock.Text = "-";
+            _expectedProcessedCount = 0;
 
             string mode = GetSelectedMode();
             string workerPath = ResolveWorkerPath(mode);
@@ -124,8 +131,6 @@ public partial class MainWindow : Window
 
     private void HandleWorkerMessage(string line)
     {
-        LogListBox.Items.Add(line);
-        LogListBox.ScrollIntoView(line);
 
         try
         {
@@ -135,13 +140,46 @@ public partial class MainWindow : Window
                 return;
 
             string? type = typeElement.GetString();
+            if (type != "progress")
+            {
+                LogListBox.Items.Add(line);
 
+                if (LogListBox.Items.Count > 300)
+                    LogListBox.Items.RemoveAt(0);
+
+                LogListBox.ScrollIntoView(line);
+            }
             if (type == "started")
             {
                 var message = JsonSerializer.Deserialize<StartedMessage>(line, JsonOptions);
 
                 if (message is not null)
+                {
                     StatusTextBlock.Text = $"Działa: {message.SynchronizationMode}";
+                    _expectedProcessedCount = (long)message.WorkerCount * message.EpochCount * 2;
+                    MainProgressBar.Maximum = _expectedProcessedCount;
+                    MainProgressBar.Value = 0;
+                    ProgressPercentTextBlock.Text = "0%";
+                }
+            }
+            else if (type == "progress")
+            {
+                var message = JsonSerializer.Deserialize<ProgressMessage>(line, JsonOptions);
+
+                if (message is not null)
+                {
+                    ProcessedTextBlock.Text = message.ProcessedCount.ToString();
+                    EpochTextBlock.Text = message.Epoch.ToString();
+                    PhaseWorkerTextBlock.Text = $"{message.Phase}, zadanie {message.WorkerId}";
+                    StatusTextBlock.Text = $"Epoka {message.Epoch}, faza {message.Phase}, zadanie {message.WorkerId}";
+
+                    if (_expectedProcessedCount > 0)
+                    {
+                        MainProgressBar.Value = Math.Min(message.ProcessedCount, _expectedProcessedCount);
+                        double percent = message.ProcessedCount * 100.0 / _expectedProcessedCount;
+                        ProgressPercentTextBlock.Text = $"{percent:F1}%";
+                    }
+                }
             }
             else if (type == "best")
             {
@@ -152,8 +190,12 @@ public partial class MainWindow : Window
                     BestLengthTextBlock.Text = message.Length.ToString("F2");
                     ProcessedTextBlock.Text = message.ProcessedCount.ToString();
                     StatusTextBlock.Text = $"Epoka {message.Epoch}, faza {message.Phase}, zadanie {message.WorkerId}";
+                    EpochTextBlock.Text = message.Epoch.ToString();
+                    PhaseWorkerTextBlock.Text = $"{message.Phase}, zadanie {message.WorkerId}";
+                    BestWorkerTextBlock.Text = $"zadanie {message.WorkerId}";
                     _bestTour = message.Tour;
                     DrawTour();
+                    UpdateTourTable();
                 }
             }
             else if (type == "control")
@@ -172,8 +214,23 @@ public partial class MainWindow : Window
                     BestLengthTextBlock.Text = message.BestLength.ToString("F2");
                     ProcessedTextBlock.Text = message.ProcessedCount.ToString();
                     StatusTextBlock.Text = message.WasCancelled ? "Przerwano" : "Zakończono";
+
+                    if (!message.WasCancelled && _expectedProcessedCount > 0)
+                    {
+                        MainProgressBar.Value = _expectedProcessedCount;
+                        ProgressPercentTextBlock.Text = "100%";
+                    }
+                    else if (_expectedProcessedCount > 0)
+                    {
+                        MainProgressBar.Value = Math.Min(message.ProcessedCount, _expectedProcessedCount);
+
+                        double percent = message.ProcessedCount * 100.0 / _expectedProcessedCount;
+                        ProgressPercentTextBlock.Text = $"{percent:F1}%";
+                    }
+
                     _bestTour = message.BestTour;
                     DrawTour();
+                    UpdateTourTable();
                 }
             }
             else if (type == "error")
@@ -276,7 +333,34 @@ public partial class MainWindow : Window
             TourCanvas.Children.Add(ellipse);
         }
     }
+    private void UpdateTourTable()
+    {
+        if (_cities is null || _bestTour is null)
+        {
+            TourDataGrid.ItemsSource = null;
+            return;
+        }
 
+        var rows = new List<TourRow>();
+
+        for (int i = 0; i < _bestTour.Length; i++)
+        {
+            int cityIndex = _bestTour[i];
+
+            if (cityIndex < 0 || cityIndex >= _cities.Count)
+                continue;
+
+            City city = _cities[cityIndex];
+
+            rows.Add(new TourRow(
+                i + 1,
+                city.Id,
+                city.X,
+                city.Y));
+        }
+
+        TourDataGrid.ItemsSource = rows;
+    }
     private void PauseButton_Click(object sender, RoutedEventArgs e)
     {
         SendCommand("pause");
@@ -351,5 +435,28 @@ public partial class MainWindow : Window
     private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         DrawTour();
+    }
+    private sealed record TourRow(
+    int Position,
+    int CityId,
+    double X,
+    double Y);
+
+    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        try
+        {
+            if (_workerProcess is not null && !_workerProcess.HasExited)
+            {
+                _workerProcess.StandardInput.WriteLine("stop");
+                _workerProcess.StandardInput.Flush();
+
+                if (!_workerProcess.WaitForExit(2000))
+                    _workerProcess.Kill(true);
+            }
+        }
+        catch
+        {
+        }
     }
 }

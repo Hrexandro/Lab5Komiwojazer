@@ -100,3 +100,9 @@ public sealed record BestFoundInfo(
     double Length,
     long ProcessedCount,
     int[] Tour);
+
+public sealed record ProgressInfo(
+    int WorkerId,
+    int Epoch,
+    string Phase,
+    long ProcessedCount);

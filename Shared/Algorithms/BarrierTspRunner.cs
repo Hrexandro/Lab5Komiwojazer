@@ -13,6 +13,7 @@ public static class BarrierTspRunner
         int pmxAttempts,
         TimeSpan threeOptTime,
         Action<BestFoundInfo>? onBestFound = null,
+        Action<ProgressInfo>? onProgress = null,
         CancellationToken token = default,
         PauseController? pauseController = null)
     {
@@ -47,6 +48,12 @@ public static class BarrierTspRunner
         void ReportIfBest(int workerId, int epoch, string phase, Tour candidate)
         {
             long count = Interlocked.Increment(ref processedCount);
+
+            onProgress?.Invoke(new ProgressInfo(
+                workerId,
+                epoch,
+                phase,
+                count));
 
             if (bestStore.TryUpdate(candidate))
             {

@@ -32,3 +32,10 @@ public sealed record FinishedMessage(
 public sealed record ErrorMessage(
     string Type,
     string Message);
+
+public sealed record ProgressMessage(
+    string Type,
+    int WorkerId,
+    int Epoch,
+    string Phase,
+    long ProcessedCount);

@@ -76,7 +76,18 @@ public static class WorkerHost
                     info.ProcessedCount,
                     info.Tour));
             };
-
+            Action<ProgressInfo> progressHandler = info =>
+            {
+                if (info.ProcessedCount == 1 || info.ProcessedCount % 100 == 0)
+                {
+                    JsonLineWriter.Write(new ProgressMessage(
+                        "progress",
+                        info.WorkerId,
+                        info.Epoch,
+                        info.Phase,
+                        info.ProcessedCount));
+                }
+            };
             ParallelRunResult result;
 
             if (settings.Mode == "threadpool")
@@ -89,6 +100,7 @@ public static class WorkerHost
                     settings.PmxAttempts,
                     settings.ThreeOptTime,
                     bestHandler,
+                    progressHandler,
                     cts.Token,
                     pauseController);
             }
@@ -102,6 +114,7 @@ public static class WorkerHost
                     settings.PmxAttempts,
                     settings.ThreeOptTime,
                     bestHandler,
+                    progressHandler,
                     cts.Token,
                     pauseController);
             }
