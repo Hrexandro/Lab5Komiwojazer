@@ -4,10 +4,13 @@ using Shared.Parsing;
 string path = "wi29.tsp";
 
 const int workerCount = 4;
-const int epochCount = 5;
+const int epochCount = 100;
 const int pmxAttempts = 10_000;
 
 TimeSpan threeOptTime = TimeSpan.FromSeconds(2);
+
+using var cts = new CancellationTokenSource();
+cts.CancelAfter(TimeSpan.FromSeconds(2));
 
 try
 {
@@ -19,6 +22,7 @@ try
     Console.WriteLine($"Próby PMX na epokę: {pmxAttempts}");
     Console.WriteLine($"Czas 3-opt na epokę: {threeOptTime.TotalSeconds:F0} s");
     Console.WriteLine("Tryb synchronizacji: Barrier");
+    Console.WriteLine("Automatyczne przerwanie po 5 s");
     Console.WriteLine();
 
     var distances = DistanceMatrix.Build(cities);
@@ -34,10 +38,16 @@ try
         {
             Console.WriteLine(
                 $"Nowy najlepszy wynik | zadanie {info.WorkerId} | epoka {info.Epoch} | faza {info.Phase} | długość {info.Length:F2} | policzone: {info.ProcessedCount}");
-        });
+        },
+        cts.Token);
 
     Console.WriteLine();
-    Console.WriteLine("Zakończono obliczenia.");
+
+    if (result.WasCancelled)
+        Console.WriteLine("Obliczenia zostały przerwane.");
+    else
+        Console.WriteLine("Obliczenia zakończone normalnie.");
+
     Console.WriteLine($"Policzone instancje: {result.ProcessedCount}");
     Console.WriteLine($"Najlepszy wynik: {result.BestTour.Length:F2}");
     Console.WriteLine("Najlepsza trasa:");

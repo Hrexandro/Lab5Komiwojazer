@@ -89,7 +89,7 @@ public static class ParallelTspRunner
     }
 }
 
-public sealed record ParallelRunResult(Tour BestTour, long ProcessedCount);
+public sealed record ParallelRunResult(Tour BestTour, long ProcessedCount, bool WasCancelled = false);
 
 public sealed record BestFoundInfo(
     int WorkerId,

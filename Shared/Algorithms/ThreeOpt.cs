@@ -1,5 +1,6 @@
-using System.Diagnostics;
 using Shared.Models;
+using System.Diagnostics;
+using System.Threading;
 
 namespace Shared.Algorithms;
 
@@ -8,7 +9,8 @@ public static class ThreeOpt
     public static Tour Improve(
         Tour input,
         double[,] distances,
-        TimeSpan maxTime)
+        TimeSpan maxTime,
+        CancellationToken token = default)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -20,6 +22,8 @@ public static class ThreeOpt
 
         while (improved && stopwatch.Elapsed < maxTime)
         {
+            token.ThrowIfCancellationRequested();
+
             improved = false;
 
             for (int i = 0; i < cityCount - 2; i++)
@@ -28,6 +32,8 @@ public static class ThreeOpt
                 {
                     for (int k = j + 1; k < cityCount; k++)
                     {
+                        token.ThrowIfCancellationRequested();
+
                         if (stopwatch.Elapsed >= maxTime)
                             return new Tour(bestOrder) { Length = bestLength };
 

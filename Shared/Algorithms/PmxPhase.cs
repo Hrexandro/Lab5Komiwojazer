@@ -1,6 +1,7 @@
-namespace Shared.Algorithms;
-
 using Shared.Models;
+using System.Threading;
+
+namespace Shared.Algorithms;
 
 public static class PmxPhase
 {
@@ -9,7 +10,8 @@ public static class PmxPhase
         int[] parent2,
         double[,] distances,
         int attempts,
-        Random random)
+        Random random,
+        CancellationToken token = default)
     {
         if (attempts <= 0)
             throw new ArgumentException("Liczba prób musi być większa od zera.");
@@ -20,6 +22,8 @@ public static class PmxPhase
 
         for (int i = 0; i < attempts; i++)
         {
+            token.ThrowIfCancellationRequested();
+
             int start = random.Next(0, cityCount - 1);
             int end = random.Next(start + 1, cityCount);
 

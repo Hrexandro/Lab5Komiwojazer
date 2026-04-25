@@ -26,6 +26,7 @@ public static class BarrierTspRunner
 
         var bestStore = new BestResultStore();
         long processedCount = 0;
+        bool wasCancelled = false;
 
         var parent1Inputs = new int[workerCount][];
         var parent2Inputs = new int[workerCount][];
@@ -60,6 +61,7 @@ public static class BarrierTspRunner
         using var pmxBarrier = new Barrier(workerCount, _ =>
         {
             var selected = pmxResults
+                .Where(result => result is not null)
                 .Select(result => result!)
                 .OrderBy(result => result.Length)
                 .Take(Math.Max(1, workerCount / 2))
@@ -74,6 +76,7 @@ public static class BarrierTspRunner
         using var optBarrier = new Barrier(workerCount, _ =>
         {
             var selected = optResults
+                .Where(result => result is not null)
                 .Select(result => result!)
                 .OrderBy(result => result.Length)
                 .Take(Math.Max(1, workerCount / 2))
@@ -86,13 +89,9 @@ public static class BarrierTspRunner
                 parent1Inputs[i] = (int[])selected[i % selected.Length].Order.Clone();
 
                 if (selected.Length == 1)
-                {
                     parent2Inputs[i] = TourGenerator.CreateRandomTour(cityCount, random);
-                }
                 else
-                {
                     parent2Inputs[i] = (int[])selected[(i + 1) % selected.Length].Order.Clone();
-                }
             }
         });
 
@@ -115,7 +114,8 @@ public static class BarrierTspRunner
                         parent2Inputs[capturedWorkerId],
                         distances,
                         pmxAttempts,
-                        random);
+                        random,
+                        token);
 
                     pmxResults[capturedWorkerId] = bestChild;
                     ReportIfBest(capturedWorkerId, epoch, "PMX", bestChild);
@@ -127,7 +127,8 @@ public static class BarrierTspRunner
                     var improved = ThreeOpt.Improve(
                         optInputs[capturedWorkerId]!,
                         distances,
-                        threeOptTime);
+                        threeOptTime,
+                        token);
 
                     optResults[capturedWorkerId] = improved;
                     ReportIfBest(capturedWorkerId, epoch, "3-opt", improved);
@@ -137,13 +138,20 @@ public static class BarrierTspRunner
             }, token);
         }
 
-        await Task.WhenAll(tasks);
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (OperationCanceledException)
+        {
+            wasCancelled = true;
+        }
 
         var best = bestStore.GetBest();
 
         if (best is null)
             throw new InvalidOperationException("Nie znaleziono żadnego wyniku.");
 
-        return new ParallelRunResult(best, processedCount);
+        return new ParallelRunResult(best, processedCount, wasCancelled);
     }
 }
