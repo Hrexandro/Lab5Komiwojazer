@@ -5,4 +5,5 @@ public sealed record WorkerSettings(
     int WorkerCount,
     int EpochCount,
     int PmxAttempts,
-    TimeSpan ThreeOptTime);
+    TimeSpan ThreeOptTime,
+    string Mode);

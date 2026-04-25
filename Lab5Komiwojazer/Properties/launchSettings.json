@@ -1,8 +1,7 @@
 {
   "profiles": {
     "Lab5Komiwojazer": {
-      "commandName": "Project",
-      "commandLineArgs": "wi29.tsp 4 100000 10000 2"
+      "commandName": "Project"
     }
   }
 }

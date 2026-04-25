@@ -13,6 +13,10 @@ try
     var cities = Parser.LoadCities(settings.Path);
     var distances = DistanceMatrix.Build(cities);
 
+    string synchronizationMode = settings.Mode == "threadpool"
+        ? "ThreadPool + Barrier"
+        : "TPL + Barrier";
+
     JsonLineWriter.Write(new StartedMessage(
         "started",
         cities.Count,
@@ -20,7 +24,7 @@ try
         settings.EpochCount,
         settings.PmxAttempts,
         settings.ThreeOptTime.TotalSeconds,
-        "ThreadPool + Barrier"));
+        synchronizationMode));
 
     var controlTask = Task.Run(() =>
     {
@@ -52,26 +56,46 @@ try
         }
     });
 
-var result = await ThreadPoolTspRunner.RunAsync(
+    Action<BestFoundInfo> bestHandler = info =>
+    {
+        JsonLineWriter.Write(new BestMessage(
+            "best",
+            info.WorkerId,
+            info.Epoch,
+            info.Phase,
+            info.Length,
+            info.ProcessedCount,
+            info.Tour));
+    };
+
+    ParallelRunResult result;
+
+    if (settings.Mode == "threadpool")
+    {
+        result = await ThreadPoolTspRunner.RunAsync(
             distances,
-        cities.Count,
-        settings.WorkerCount,
-        settings.EpochCount,
-        settings.PmxAttempts,
-        settings.ThreeOptTime,
-        info =>
-        {
-            JsonLineWriter.Write(new BestMessage(
-                "best",
-                info.WorkerId,
-                info.Epoch,
-                info.Phase,
-                info.Length,
-                info.ProcessedCount,
-                info.Tour));
-        },
-        cts.Token,
-        pauseController);
+            cities.Count,
+            settings.WorkerCount,
+            settings.EpochCount,
+            settings.PmxAttempts,
+            settings.ThreeOptTime,
+            bestHandler,
+            cts.Token,
+            pauseController);
+    }
+    else
+    {
+        result = await BarrierTspRunner.RunAsync(
+            distances,
+            cities.Count,
+            settings.WorkerCount,
+            settings.EpochCount,
+            settings.PmxAttempts,
+            settings.ThreeOptTime,
+            bestHandler,
+            cts.Token,
+            pauseController);
+    }
 
     JsonLineWriter.Write(new FinishedMessage(
         "finished",
