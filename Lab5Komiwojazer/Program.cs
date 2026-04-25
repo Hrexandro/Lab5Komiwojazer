@@ -37,8 +37,17 @@ try
     Console.WriteLine(string.Join(" -> ", bestChild.Order.Select(index => cities[index].Id)));
     Console.WriteLine($"Długość: {bestChild.Length:F2}");
 
+    var improved = ThreeOpt.Improve(bestChild, distances, TimeSpan.FromSeconds(5));
+
+    PermutationValidator.ThrowIfInvalid(improved.Order, cities.Count, "Wynik po 3-opt");
+
     Console.WriteLine();
-    Console.WriteLine("Faza PMX działa.");
+    Console.WriteLine("Wynik po 3-opt:");
+    Console.WriteLine(string.Join(" -> ", improved.Order.Select(index => cities[index].Id)));
+    Console.WriteLine($"Długość: {improved.Length:F2}");
+
+    Console.WriteLine();
+    Console.WriteLine($"Poprawa: {bestChild.Length - improved.Length:F2}");
 }
 catch (Exception ex)
 {
