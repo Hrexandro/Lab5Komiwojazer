@@ -12,21 +12,6 @@ TimeSpan threeOptTime = TimeSpan.FromSeconds(2);
 using var cts = new CancellationTokenSource();
 using var pauseController = new PauseController();
 
-cts.CancelAfter(TimeSpan.FromSeconds(8));
-
-_ = Task.Run(async () =>
-{
-    await Task.Delay(TimeSpan.FromSeconds(2));
-    pauseController.Pause();
-    Console.WriteLine();
-    Console.WriteLine("Pauza.");
-
-    await Task.Delay(TimeSpan.FromSeconds(4));
-    pauseController.Resume();
-    Console.WriteLine("Wznowienie.");
-    Console.WriteLine();
-});
-
 try
 {
     var cities = Parser.LoadCities(path);
@@ -37,10 +22,39 @@ try
     Console.WriteLine($"Próby PMX na epokę: {pmxAttempts}");
     Console.WriteLine($"Czas 3-opt na epokę: {threeOptTime.TotalSeconds:F0} s");
     Console.WriteLine("Tryb synchronizacji: Barrier");
-    Console.WriteLine("Pauza po 2 s, wznowienie po 6 s, przerwanie po 8 s");
+    Console.WriteLine();
+    Console.WriteLine("Sterowanie:");
+    Console.WriteLine("P - pauza");
+    Console.WriteLine("R - wznowienie");
+    Console.WriteLine("S - stop");
     Console.WriteLine();
 
     var distances = DistanceMatrix.Build(cities);
+
+    var controlTask = Task.Run(() =>
+    {
+        while (!cts.IsCancellationRequested)
+        {
+            var key = Console.ReadKey(true).Key;
+
+            if (key == ConsoleKey.P)
+            {
+                pauseController.Pause();
+                Console.WriteLine("Pauza.");
+            }
+            else if (key == ConsoleKey.R)
+            {
+                pauseController.Resume();
+                Console.WriteLine("Wznowienie.");
+            }
+            else if (key == ConsoleKey.S)
+            {
+                Console.WriteLine("Zatrzymywanie obliczeń...");
+                cts.Cancel();
+                break;
+            }
+        }
+    });
 
     var result = await BarrierTspRunner.RunAsync(
         distances,
