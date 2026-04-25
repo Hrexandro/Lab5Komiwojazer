@@ -1,14 +1,22 @@
 ﻿using Shared.Communication;
+using Shared.Models;
+using Shared.Parsing;
 using System.Diagnostics;
-using System.IO;
+using IOFile = System.IO.File;
+using IOPath = System.IO.Path;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace Lab5KomiwojazerGui;
 
 public partial class MainWindow : Window
 {
     private Process? _workerProcess;
+    private List<City>? _cities;
+    private int[]? _bestTour;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -25,18 +33,31 @@ public partial class MainWindow : Window
         try
         {
             LogListBox.Items.Clear();
+            TourCanvas.Children.Clear();
             StatusTextBlock.Text = "Uruchamianie...";
             BestLengthTextBlock.Text = "-";
             ProcessedTextBlock.Text = "-";
+            _bestTour = null;
 
             string mode = GetSelectedMode();
             string workerPath = ResolveWorkerPath(mode);
 
-            if (!File.Exists(workerPath))
+            if (!IOFile.Exists(workerPath))
             {
                 MessageBox.Show($"Nie znaleziono pliku:\n{workerPath}", "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+
+            string workerDirectory = IOPath.GetDirectoryName(workerPath)!;
+            string tspPath = ResolveTspPath(workerDirectory, TspPathTextBox.Text.Trim());
+
+            if (!IOFile.Exists(tspPath))
+            {
+                MessageBox.Show($"Nie znaleziono pliku TSP:\n{tspPath}", "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            _cities = Parser.LoadCities(tspPath);
 
             var startInfo = new ProcessStartInfo
             {
@@ -45,10 +66,10 @@ public partial class MainWindow : Window
                 RedirectStandardOutput = true,
                 RedirectStandardInput = true,
                 CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(workerPath)!
+                WorkingDirectory = workerDirectory
             };
 
-            startInfo.ArgumentList.Add(TspPathTextBox.Text.Trim());
+            startInfo.ArgumentList.Add(tspPath);
             startInfo.ArgumentList.Add(WorkerCountTextBox.Text.Trim());
             startInfo.ArgumentList.Add(EpochCountTextBox.Text.Trim());
             startInfo.ArgumentList.Add(PmxAttemptsTextBox.Text.Trim());
@@ -69,7 +90,8 @@ public partial class MainWindow : Window
                 ReadWorkerOutputAsync(_workerProcess),
                 _workerProcess.WaitForExitAsync());
 
-            StatusTextBlock.Text = "Zakończono";
+            if (StatusTextBlock.Text != "Przerwano" && StatusTextBlock.Text != "Zakończono")
+                StatusTextBlock.Text = "Zakończono";
         }
         catch (Exception ex)
         {
@@ -130,6 +152,8 @@ public partial class MainWindow : Window
                     BestLengthTextBlock.Text = message.Length.ToString("F2");
                     ProcessedTextBlock.Text = message.ProcessedCount.ToString();
                     StatusTextBlock.Text = $"Epoka {message.Epoch}, faza {message.Phase}, zadanie {message.WorkerId}";
+                    _bestTour = message.Tour;
+                    DrawTour();
                 }
             }
             else if (type == "control")
@@ -148,6 +172,8 @@ public partial class MainWindow : Window
                     BestLengthTextBlock.Text = message.BestLength.ToString("F2");
                     ProcessedTextBlock.Text = message.ProcessedCount.ToString();
                     StatusTextBlock.Text = message.WasCancelled ? "Przerwano" : "Zakończono";
+                    _bestTour = message.BestTour;
+                    DrawTour();
                 }
             }
             else if (type == "error")
@@ -161,6 +187,93 @@ public partial class MainWindow : Window
         catch
         {
             StatusTextBlock.Text = "Nie udało się odczytać JSON";
+        }
+    }
+
+    private void DrawTour()
+    {
+        TourCanvas.Children.Clear();
+
+        if (_cities is null || _bestTour is null || _bestTour.Length == 0)
+            return;
+
+        double width = TourCanvas.ActualWidth;
+        double height = TourCanvas.ActualHeight;
+
+        if (width <= 10 || height <= 10)
+            return;
+
+        double minX = _cities.Min(city => city.X);
+        double maxX = _cities.Max(city => city.X);
+        double minY = _cities.Min(city => city.Y);
+        double maxY = _cities.Max(city => city.Y);
+
+        double dataWidth = maxX - minX;
+        double dataHeight = maxY - minY;
+
+        if (dataWidth <= 0 || dataHeight <= 0)
+            return;
+
+        double margin = 20;
+        double scaleX = (width - 2 * margin) / dataWidth;
+        double scaleY = (height - 2 * margin) / dataHeight;
+        double scale = Math.Min(scaleX, scaleY);
+
+        Point MapPoint(City city)
+        {
+            double x = margin + (city.X - minX) * scale;
+            double y = height - margin - (city.Y - minY) * scale;
+
+            return new Point(x, y);
+        }
+
+        for (int i = 0; i < _bestTour.Length; i++)
+        {
+            int currentIndex = _bestTour[i];
+            int nextIndex = _bestTour[(i + 1) % _bestTour.Length];
+
+            if (currentIndex < 0 || currentIndex >= _cities.Count)
+                continue;
+
+            if (nextIndex < 0 || nextIndex >= _cities.Count)
+                continue;
+
+            Point current = MapPoint(_cities[currentIndex]);
+            Point next = MapPoint(_cities[nextIndex]);
+
+            var line = new Line
+            {
+                X1 = current.X,
+                Y1 = current.Y,
+                X2 = next.X,
+                Y2 = next.Y,
+                Stroke = Brushes.DarkSlateGray,
+                StrokeThickness = 1.5
+            };
+
+            TourCanvas.Children.Add(line);
+        }
+
+        foreach (int cityIndex in _bestTour)
+        {
+            if (cityIndex < 0 || cityIndex >= _cities.Count)
+                continue;
+
+            Point point = MapPoint(_cities[cityIndex]);
+
+            var ellipse = new Ellipse
+            {
+                Width = 7,
+                Height = 7,
+                Fill = Brushes.Crimson,
+                Stroke = Brushes.White,
+                StrokeThickness = 1
+            };
+
+            Canvas.SetLeft(ellipse, point.X - ellipse.Width / 2);
+            Canvas.SetTop(ellipse, point.Y - ellipse.Height / 2);
+
+            TourCanvas.Children.Add(ellipse);
         }
     }
 
@@ -214,7 +327,7 @@ public partial class MainWindow : Window
 
         string exeName = $"{projectName}.exe";
 
-        return Path.GetFullPath(Path.Combine(
+        return IOPath.GetFullPath(IOPath.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
@@ -225,5 +338,18 @@ public partial class MainWindow : Window
             "Debug",
             "net10.0",
             exeName));
+    }
+
+    private static string ResolveTspPath(string workerDirectory, string path)
+    {
+        if (IOPath.IsPathRooted(path))
+            return path;
+
+        return IOPath.GetFullPath(IOPath.Combine(workerDirectory, path));
+    }
+
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        DrawTour();
     }
 }
