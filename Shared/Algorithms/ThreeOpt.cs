@@ -10,7 +10,8 @@ public static class ThreeOpt
         Tour input,
         double[,] distances,
         TimeSpan maxTime,
-        CancellationToken token = default)
+        CancellationToken token = default,
+        PauseController? pauseController = null)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -23,6 +24,7 @@ public static class ThreeOpt
         while (improved && stopwatch.Elapsed < maxTime)
         {
             token.ThrowIfCancellationRequested();
+            pauseController?.WaitIfPaused(token);
 
             improved = false;
 
@@ -33,6 +35,7 @@ public static class ThreeOpt
                     for (int k = j + 1; k < cityCount; k++)
                     {
                         token.ThrowIfCancellationRequested();
+                        pauseController?.WaitIfPaused(token);
 
                         if (stopwatch.Elapsed >= maxTime)
                             return new Tour(bestOrder) { Length = bestLength };

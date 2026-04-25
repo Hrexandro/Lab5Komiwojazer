@@ -11,7 +11,8 @@ public static class PmxPhase
         double[,] distances,
         int attempts,
         Random random,
-        CancellationToken token = default)
+        CancellationToken token = default,
+        PauseController? pauseController = null)
     {
         if (attempts <= 0)
             throw new ArgumentException("Liczba prób musi być większa od zera.");
@@ -23,6 +24,7 @@ public static class PmxPhase
         for (int i = 0; i < attempts; i++)
         {
             token.ThrowIfCancellationRequested();
+            pauseController?.WaitIfPaused(token);
 
             int start = random.Next(0, cityCount - 1);
             int end = random.Next(start + 1, cityCount);

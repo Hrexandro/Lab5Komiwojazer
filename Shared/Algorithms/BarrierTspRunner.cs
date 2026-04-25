@@ -13,7 +13,8 @@ public static class BarrierTspRunner
         int pmxAttempts,
         TimeSpan threeOptTime,
         Action<BestFoundInfo>? onBestFound = null,
-        CancellationToken token = default)
+        CancellationToken token = default,
+        PauseController? pauseController = null)
     {
         if (workerCount < 2)
             throw new ArgumentException("Liczba zadań musi wynosić co najmniej 2.");
@@ -26,7 +27,7 @@ public static class BarrierTspRunner
 
         var bestStore = new BestResultStore();
         long processedCount = 0;
-        bool wasCancelled = false;
+        int cancellationObserved = 0;
 
         var parent1Inputs = new int[workerCount][];
         var parent2Inputs = new int[workerCount][];
@@ -67,6 +68,9 @@ public static class BarrierTspRunner
                 .Take(Math.Max(1, workerCount / 2))
                 .ToArray();
 
+            if (selected.Length == 0)
+                return;
+
             for (int i = 0; i < workerCount; i++)
             {
                 optInputs[i] = selected[i % selected.Length];
@@ -81,6 +85,9 @@ public static class BarrierTspRunner
                 .OrderBy(result => result.Length)
                 .Take(Math.Max(1, workerCount / 2))
                 .ToArray();
+
+            if (selected.Length == 0)
+                return;
 
             var random = new Random(unchecked(Environment.TickCount * 17 + (int)processedCount));
 
@@ -103,54 +110,62 @@ public static class BarrierTspRunner
 
             tasks[workerId] = Task.Run(() =>
             {
-                var random = new Random(unchecked(Environment.TickCount * 31 + capturedWorkerId * 9973));
-
-                for (int epoch = 1; epoch <= epochCount; epoch++)
+                try
                 {
-                    token.ThrowIfCancellationRequested();
+                    var random = new Random(unchecked(Environment.TickCount * 31 + capturedWorkerId * 9973));
 
-                    var bestChild = PmxPhase.Run(
-                        parent1Inputs[capturedWorkerId],
-                        parent2Inputs[capturedWorkerId],
-                        distances,
-                        pmxAttempts,
-                        random,
-                        token);
+                    for (int epoch = 1; epoch <= epochCount; epoch++)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        pauseController?.WaitIfPaused(token);
 
-                    pmxResults[capturedWorkerId] = bestChild;
-                    ReportIfBest(capturedWorkerId, epoch, "PMX", bestChild);
+                        var bestChild = PmxPhase.Run(
+                            parent1Inputs[capturedWorkerId],
+                            parent2Inputs[capturedWorkerId],
+                            distances,
+                            pmxAttempts,
+                            random,
+                            token,
+                            pauseController);
 
-                    pmxBarrier.SignalAndWait(token);
+                        pmxResults[capturedWorkerId] = bestChild;
+                        ReportIfBest(capturedWorkerId, epoch, "PMX", bestChild);
 
-                    token.ThrowIfCancellationRequested();
+                        pauseController?.WaitIfPaused(token);
+                        pmxBarrier.SignalAndWait(token);
 
-                    var improved = ThreeOpt.Improve(
-                        optInputs[capturedWorkerId]!,
-                        distances,
-                        threeOptTime,
-                        token);
+                        token.ThrowIfCancellationRequested();
+                        pauseController?.WaitIfPaused(token);
 
-                    optResults[capturedWorkerId] = improved;
-                    ReportIfBest(capturedWorkerId, epoch, "3-opt", improved);
+                        var improved = ThreeOpt.Improve(
+                            optInputs[capturedWorkerId]!,
+                            distances,
+                            threeOptTime,
+                            token,
+                            pauseController);
 
-                    optBarrier.SignalAndWait(token);
+                        optResults[capturedWorkerId] = improved;
+                        ReportIfBest(capturedWorkerId, epoch, "3-opt", improved);
+
+                        pauseController?.WaitIfPaused(token);
+                        optBarrier.SignalAndWait(token);
+                    }
                 }
-            }, token);
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    Interlocked.Exchange(ref cancellationObserved, 1);
+                }
+            });
         }
 
-        try
-        {
-            await Task.WhenAll(tasks);
-        }
-        catch (OperationCanceledException)
-        {
-            wasCancelled = true;
-        }
+        await Task.WhenAll(tasks);
 
         var best = bestStore.GetBest();
 
         if (best is null)
             throw new InvalidOperationException("Nie znaleziono żadnego wyniku.");
+
+        bool wasCancelled = token.IsCancellationRequested || Volatile.Read(ref cancellationObserved) == 1;
 
         return new ParallelRunResult(best, processedCount, wasCancelled);
     }
